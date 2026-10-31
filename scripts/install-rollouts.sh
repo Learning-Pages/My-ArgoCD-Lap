@@ -10,5 +10,18 @@ kubectl apply -n argo-rollouts \
 echo "Waiting for argo-rollouts deployment to reach Ready status..."
 kubectl -n argo-rollouts rollout status deploy/argo-rollouts --timeout=300s
 
+echo "Waiting for Rollouts CRDs to be Established..."
+kubectl wait --for=condition=Established --timeout=60s \
+  crd/rollouts.argoproj.io \
+  crd/analysisruns.argoproj.io \
+  crd/analysistemplates.argoproj.io \
+  crd/clusteranalysistemplates.argoproj.io \
+  crd/experiments.argoproj.io
+
 echo "=== Argo Rollouts Controller Installed Successfully ==="
-kubectl get crd | grep argoproj.io
+kubectl get crd \
+  rollouts.argoproj.io \
+  analysisruns.argoproj.io \
+  analysistemplates.argoproj.io \
+  clusteranalysistemplates.argoproj.io \
+  experiments.argoproj.io
