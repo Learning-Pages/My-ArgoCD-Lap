@@ -6,7 +6,7 @@ metadata:
 spec:
   description: "Production project for ShopSphere microservices"
   sourceRepos:
-    - '*'
+    - 'https://github.com/Learning-Pages/My-ArgoCD-Lap.git'
   destinations:
     - namespace: 'shopsphere-*'
       server: 'https://kubernetes.default.svc'
@@ -29,8 +29,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: ${GIT_REPO}
-    targetRevision: ${GIT_BRANCH}
+    repoURL: https://github.com/Learning-Pages/My-ArgoCD-Lap.git
+    targetRevision: main
     path: bootstrap
   destination:
     server: https://kubernetes.default.svc
@@ -39,6 +39,8 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
@@ -46,6 +48,8 @@ metadata:
   name: matrix-shopsphere-apps
   namespace: argocd
 spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
   generators:
     - matrix:
         generators:
@@ -53,13 +57,13 @@ spec:
               elements:
                 - env: dev
                   cluster: https://kubernetes.default.svc
-                  autoSync: true
+                  autoSync: "true"
                 - env: staging
                   cluster: https://kubernetes.default.svc
-                  autoSync: true
+                  autoSync: "true"
                 - env: prod
                   cluster: https://kubernetes.default.svc
-                  autoSync: false
+                  autoSync: "false"
           - list:
               elements:
                 - app: cart
@@ -67,19 +71,27 @@ spec:
                 - app: frontend
   template:
     metadata:
-      name: '{{env}}-{{app}}-service'
+      name: '{{.env}}-{{.app}}-service'
+      labels:
+        app.kubernetes.io/name: '{{.app}}'
+        app.kubernetes.io/part-of: shopsphere
+        environment: '{{.env}}'
     spec:
       project: shopsphere-apps
       source:
         repoURL: https://github.com/Learning-Pages/My-ArgoCD-Lap.git
         targetRevision: main
-        path: 'environments/{{env}}'
+        # ⚠️ REPLACE with the real directory in your repo for each app/env.
+        # Must be a DIRECTORY, never a single file.
+        path: bootsrap
       destination:
-        server: '{{cluster}}'
-        namespace: 'shopsphere-{{env}}'
+        server: '{{.cluster}}'
+        namespace: 'shopsphere-{{.env}}'
       syncPolicy:
+        {{- if eq .autoSync "true" }}
         automated:
           prune: true
           selfHeal: true
+        {{- end }}
         syncOptions:
           - CreateNamespace=true
