@@ -1,0 +1,159 @@
+# Wave -1: Namespace & Cluster Boundaries
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopsphere-waves
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+---
+# Wave 0: PostgreSQL Database (StatefulSet)
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-db
+  namespace: shopsphere-waves
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  serviceName: postgres-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-db
+  template:
+    metadata:
+      labels:
+        app: postgres-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - name: POSTGRES_PASSWORD
+              value: "postgres"
+          ports:
+            - containerPort: 5432
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U postgres"]
+            initialDelaySeconds: 5
+            periodSeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-db
+  namespace: shopsphere-waves
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: postgres-db
+---
+# Wave 1: Backend REST API Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-api
+  namespace: shopsphere-waves
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend-api
+  template:
+    metadata:
+      labels:
+        app: backend-api
+    spec:
+      containers:
+        - name: api
+          image: nginx:1.27
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 2
+            periodSeconds: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-api
+  namespace: shopsphere-waves
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  ports:
+    - port: 80
+  selector:
+    app: backend-api
+---
+# Wave 2: Frontend Web UI
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-web
+  namespace: shopsphere-waves
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend-web
+  template:
+    metadata:
+      labels:
+        app: frontend-web
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.27
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 2
+            periodSeconds: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-web
+  namespace: shopsphere-waves
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  ports:
+    - port: 80
+  selector:
+    app: frontend-web
+---
+# Argo CD Application Definition
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sync-waves-stack
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: <YOUR_GIT_REPO>
+    targetRevision: ${GIT_BRANCH}
+    path: sync-labs/sync-waves
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: shopsphere-waves
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

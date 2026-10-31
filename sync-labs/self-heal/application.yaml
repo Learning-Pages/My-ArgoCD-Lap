@@ -1,0 +1,63 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: self-heal-demo
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: <YOUR_GIT_REPO>
+    targetRevision: ${GIT_BRANCH}
+    path: apps/rolling-update
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: self-heal-demo
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prune-demo
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: <YOUR_GIT_REPO>
+    targetRevision: ${GIT_BRANCH}
+    path: apps/rolling-update
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: prune-demo
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: allow-empty-demo
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: <YOUR_GIT_REPO>
+    targetRevision: ${GIT_BRANCH}
+    path: apps/rolling-update
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: allow-empty-demo
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: true
+    syncOptions:
+      - CreateNamespace=true

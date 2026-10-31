@@ -1,0 +1,20 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migration
+  namespace: shopsphere-waves
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  template:
+    metadata:
+      labels:
+        job: db-migration
+    spec:
+      containers:
+        - name: migrate
+          image: busybox:1.36
+          command: ["sh", "-c", "echo 'Connecting to PostgreSQL...'; echo 'Applying flyway V1__init.sql schemas...'; sleep 3; echo 'Migrations completed successfully!'; exit 0"]
+      restartPolicy: Never
+  backoffLimit: 2

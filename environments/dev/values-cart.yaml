@@ -1,0 +1,16 @@
+# Development Environment Values (Automated CI Continuous Deployment)
+replicaCount: 2
+image:
+  repository: shopsphere/cart
+  tag: sha-3f9a1c2
+  pullPolicy: IfNotPresent
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+env:
+  ENVIRONMENT_NAME: dev
+  LOG_LEVEL: debug

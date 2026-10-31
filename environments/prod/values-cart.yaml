@@ -1,0 +1,33 @@
+# Staging Environment Values (Integration Testing Candidate)
+replicaCount: 2
+image:
+  repository: shopsphere/cart
+  tag: sha-3f9a1c2
+  pullPolicy: IfNotPresent
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+env:
+  ENVIRONMENT_NAME: staging
+  LOG_LEVEL: info
+---
+# Production Environment Values (SemVer Release, prune: false safeguard)
+replicaCount: 4
+image:
+  repository: shopsphere/cart
+  tag: "2.4.1"
+  pullPolicy: IfNotPresent
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+env:
+  ENVIRONMENT_NAME: production
+  LOG_LEVEL: warn

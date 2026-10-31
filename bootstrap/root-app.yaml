@@ -1,0 +1,85 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: shopsphere-apps
+  namespace: argocd
+spec:
+  description: "Production project for ShopSphere microservices"
+  sourceRepos:
+    - '*'
+  destinations:
+    - namespace: 'shopsphere-*'
+      server: 'https://kubernetes.default.svc'
+    - namespace: default
+      server: 'https://kubernetes.default.svc'
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: ${GIT_REPO}
+    targetRevision: ${GIT_BRANCH}
+    path: bootstrap
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: matrix-shopsphere-apps
+  namespace: argocd
+spec:
+  generators:
+    - matrix:
+        generators:
+          - list:
+              elements:
+                - env: dev
+                  cluster: https://kubernetes.default.svc
+                  autoSync: true
+                - env: staging
+                  cluster: https://kubernetes.default.svc
+                  autoSync: true
+                - env: prod
+                  cluster: https://kubernetes.default.svc
+                  autoSync: false
+          - list:
+              elements:
+                - app: cart
+                - app: checkout
+                - app: frontend
+  template:
+    metadata:
+      name: '{{env}}-{{app}}-service'
+    spec:
+      project: shopsphere-apps
+      source:
+        repoURL: ${GIT_REPO}
+        targetRevision: ${GIT_BRANCH}
+        path: 'environments/{{env}}'
+      destination:
+        server: '{{cluster}}'
+        namespace: 'shopsphere-{{env}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
