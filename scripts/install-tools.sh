@@ -1,45 +1,56 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "=== Installing Kubernetes & GitOps Toolchain ==="
+KUBECTL_VERSION="v1.30.0"
+KIND_VERSION="v0.23.0"
+HELM_VERSION="v3.14.4"
+ARGOCD_VERSION="v2.11.3"
+KUSTOMIZE_VERSION="v5.4.2"
+ROLLOUTS_VERSION="v1.7.1"
 
-# 1. kubectl v1.30
-echo "Installing kubectl..."
-curl -LO "https://dl.k8s.io/release/v1.30.0/bin/linux/amd64/kubectl"
-sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-rm -f kubectl
+ARCH="$(uname -m)"
+case "$ARCH" in
+  x86_64) ARCH=amd64 ;;
+  aarch64|arm64) ARCH=arm64 ;;
+  *) echo "Unsupported arch: $ARCH" >&2; exit 1 ;;
+esac
 
-# 2. kind v0.23.0
-echo "Installing kind..."
-curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64
-chmod +x ./kind
-sudo mv ./kind /usr/local/bin/kind
+tmpdir="$(mktemp -d)"
+trap 'rm -rf "$tmpdir"' EXIT
 
-# 3. Helm v3.14+
-echo "Installing Helm..."
-curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+echo "=== kubectl ${KUBECTL_VERSION} ==="
+curl -fLo "$tmpdir/kubectl" "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${ARCH}/kubectl"
+curl -fLo "$tmpdir/kubectl.sha256" "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${ARCH}/kubectl.sha256"
+echo "$(cat "$tmpdir/kubectl.sha256")  $tmpdir/kubectl" | sha256sum --check
+sudo install -o root -g root -m 0755 "$tmpdir/kubectl" /usr/local/bin/kubectl
 
-# 4. Argo CD CLI v2.11.3
-echo "Installing Argo CD CLI..."
-curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/v2.11.3/argocd-linux-amd64
-sudo install -m 555 argocd /usr/local/bin/argocd
-rm -f argocd
+echo "=== kind ${KIND_VERSION} ==="
+curl -fLo "$tmpdir/kind" "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-${ARCH}"
+sudo install -m 0755 "$tmpdir/kind" /usr/local/bin/kind
 
-# 5. Kustomize v5.3+
-echo "Installing kustomize..."
-curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
-sudo mv kustomize /usr/local/bin/
+echo "=== helm ${HELM_VERSION} ==="
+curl -fsSL "https://raw.githubusercontent.com/helm/helm/${HELM_VERSION}/scripts/get-helm-3" -o "$tmpdir/get-helm-3"
+bash "$tmpdir/get-helm-3" --version "${HELM_VERSION}"
 
-# 6. Argo Rollouts kubectl Plugin v1.7.1
-echo "Installing kubectl-argo-rollouts..."
-curl -LO https://github.com/argoproj/argo-rollouts/releases/download/v1.7.1/kubectl-argo-rollouts-linux-amd64
-chmod +x ./kubectl-argo-rollouts-linux-amd64
-sudo mv ./kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
+echo "=== argocd ${ARGOCD_VERSION} ==="
+curl -fsSLo "$tmpdir/argocd" "https://github.com/argoproj/argo-cd/releases/download/${ARGOCD_VERSION}/argocd-linux-${ARCH}"
+sudo install -m 0555 "$tmpdir/argocd" /usr/local/bin/argocd
 
-echo "=== Toolchain Installation Completed Successfully ==="
-kubectl version --client || true
-kind --version || true
-helm version || true
-argocd version --client || true
-kustomize version || true
-kubectl argo rollouts version || true
+echo "=== kustomize ${KUSTOMIZE_VERSION} ==="
+curl -fsSLo "$tmpdir/kustomize.tar.gz" \
+  "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_${ARCH}.tar.gz"
+tar xzf "$tmpdir/kustomize.tar.gz" -C "$tmpdir"
+sudo install -m 0755 "$tmpdir/kustomize" /usr/local/bin/kustomize
+
+echo "=== kubectl-argo-rollouts ${ROLLOUTS_VERSION} ==="
+curl -fLo "$tmpdir/kubectl-argo-rollouts" \
+  "https://github.com/argoproj/argo-rollouts/releases/download/${ROLLOUTS_VERSION}/kubectl-argo-rollouts-linux-${ARCH}"
+sudo install -m 0755 "$tmpdir/kubectl-argo-rollouts" /usr/local/bin/kubectl-argo-rollouts
+
+echo "=== Done ==="
+kubectl version --client
+kind --version
+helm version --short
+argocd version --client --short
+kustomize version
+kubectl argo rollouts version
