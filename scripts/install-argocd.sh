@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "=== Deploying Argo CD v2.11.3 ==="
+ARGOCD_VERSION="v2.11.3"
+MANIFEST_URL="https://raw.githubusercontent.com/argoproj/argo-cd/${ARGOCD_VERSION}/manifests/install.yaml"
+
+echo "=== Deploying Argo CD ${ARGOCD_VERSION} ==="
 kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
 
-kubectl apply -n argocd --server-side --force-conflicts \
-  -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.11.3/manifests/install.yaml
+# Server-side apply: install.yaml exceeds the client-side annotation size limit.
+# --force-conflicts is intended for fresh/idempotent installs — it overwrites
+# out-of-band manual edits on rerun.
+kubectl apply -n argocd --server-side --force-conflicts -f "${MANIFEST_URL}"
 
 echo "Waiting for Argo CD components to reach Healthy rollout status..."
 kubectl -n argocd rollout status deploy/argocd-server --timeout=300s
@@ -14,6 +19,9 @@ kubectl -n argocd rollout status deploy/argocd-applicationset-controller --timeo
 kubectl -n argocd rollout status statefulset/argocd-application-controller --timeout=300s
 
 echo "=== Argo CD Installed Successfully ==="
-echo -n "Initial admin password: "
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
-echo ""
+if kubectl -n argocd get secret argocd-initial-admin-secret &>/dev/null; then
+  printf 'Initial admin password: %s\n' \
+    "$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)"
+else
+  echo "Initial admin secret not found (password already rotated)."
+fi
