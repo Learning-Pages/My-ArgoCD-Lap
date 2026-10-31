@@ -62,8 +62,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: ${GIT_REPO}
-    targetRevision: ${GIT_BRANCH}
+    repoURL: https://github.com/Learning-Pages/My-ArgoCD-Lap.git
+    targetRevision: main
     path: apps/blue-green
   destination:
     server: https://kubernetes.default.svc
