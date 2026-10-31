@@ -147,7 +147,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: <YOUR_GIT_REPO>
+    repoURL: https://github.com/Learning-Pages/My-ArgoCD-Lap.git
     targetRevision: ${GIT_BRANCH}
     path: sync-labs/sync-waves
   destination:
