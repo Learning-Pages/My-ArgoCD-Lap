@@ -71,8 +71,8 @@ spec:
     spec:
       project: shopsphere-apps
       source:
-        repoURL: ${GIT_REPO}
-        targetRevision: ${GIT_BRANCH}
+        repoURL: https://github.com/Learning-Pages/My-ArgoCD-Lap.git
+        targetRevision: main
         path: 'environments/{{env}}'
       destination:
         server: '{{cluster}}'
